@@ -1,0 +1,13 @@
+Using device: cpu
+Traceback (most recent call last):
+  File "/home/miki/epfl/scaling/train.py", line 107, in <module>
+    main()
+    ~~~~^^
+  File "/home/miki/epfl/scaling/train.py", line 62, in main
+    optimizer = AdamW(model.parameters(),
+                     lr=config['learning_rate'],
+                     weight_decay=config['weight_decay'])
+  File "/home/miki/.local/lib/python3.13/site-packages/torch/optim/adamw.py", line 58, in __init__
+    if not 0.0 <= lr:
+           ^^^^^^^^^
+TypeError: '<=' not supported between instances of 'float' and 'str'

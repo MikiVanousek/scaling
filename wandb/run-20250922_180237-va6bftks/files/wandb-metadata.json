@@ -1,0 +1,32 @@
+{
+  "os":  "Linux-6.15.10-200.fc42.x86_64-x86_64-with-glibc2.41",
+  "python":  "CPython 3.13.7",
+  "startedAt":  "2025-09-22T16:02:37.109428Z",
+  "args":  [
+    "--config",
+    "cfgs/real_smallest.yaml"
+  ],
+  "program":  "/home/miki/epfl/scaling/train.py",
+  "codePath":  "train.py",
+  "codePathLocal":  "train.py",
+  "git":  {
+    "remote":  "git@github.com:MikiVanousek/scaling.git",
+    "commit":  "511e841d7078ce391bffd7ae2ec3cda38936e21c"
+  },
+  "email":  "vanousekmikulas@gmail.com",
+  "root":  "/home/miki/epfl/scaling",
+  "host":  "fedora",
+  "executable":  "/home/miki/epfl/scaling/.pixi/envs/default/bin/python",
+  "cpu_count":  6,
+  "cpu_count_logical":  12,
+  "disk":  {
+    "/":  {
+      "total":  "73391005696",
+      "used":  "57191108608"
+    }
+  },
+  "memory":  {
+    "total":  "32331980800"
+  },
+  "writerId":  "gkbuusld3a15xt0irl24sd6pby6ouakl"
+}
