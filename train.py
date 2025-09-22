@@ -38,14 +38,8 @@ def load_config(config_path):
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Training script with YAML config support.")
-    parser.add_argument("--config", type=str, required=True, help="Path to YAML config file.")
-    return parser.parse_args()
-
 def main():
-    args = parse_args()
-    with open(args.config, "r") as f:
+    with open("training_cfg.yaml", "r") as f:
         config = yaml.safe_load(f)
 
     wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], config=config)

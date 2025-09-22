@@ -1,0 +1,42 @@
+name: train
+image: ic-registry.epfl.ch/tml/tml:v2   # keep the lab base image
+pvc1_ic: runai-tml-vanousek-scratch:/tmlscratch
+pvc1_rcp: tml-scratch:/tmlscratch
+working_dir: /tmlscratch/vanousek
+user_home: /tmlscratch/vanousek
+home: /tmlscratch/vanousek
+user: vanousek
+uid: 1000
+group: TML-unit
+gid: 13313
+cpu: "1"
+cpu_limit: "16"
+gpu: "1"
+node_pools: "g10"
+image_pull_policy: IfNotPresent
+memory: 8G
+memory_limit: 16G
+
+# 👇 Add this section
+command: ["/bin/bash", "-c"]
+args:
+  - |
+    # 1. Install pixi (or mamba/conda if you prefer)
+    curl -fsSL https://pixi.sh/install.sh | bash
+    export PATH="$HOME/.pixi/bin:$PATH"
+
+    # 2. Clone or update your repo
+    cd /tmlscratch/vanousek
+    if [ ! -d "my-project" ]; then
+      git clone https://gitlab.epfl.ch/your/repo.git my-project
+    else
+      cd my-project && git pull
+    fi
+
+    cd my-project
+
+    # 3. Install dependencies
+    pixi install
+
+    # 4. Run training
+    pixi run python train.py
