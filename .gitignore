@@ -3,3 +3,4 @@ wandb/**
 .pixi
 *.egg-info
 .envrc
+secret.yaml

@@ -39,7 +39,10 @@ def load_config(config_path):
         return yaml.safe_load(f)
 
 def main():
-    with open("training_cfg.yaml", "r") as f:
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--config', type=str, default='training_cfg.yaml', help='Path to config file')
+    args = argparser.parse_args()
+    with open(args.config, "r") as f:
         config = yaml.safe_load(f)
 
     wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], config=config)
