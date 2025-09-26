@@ -11,6 +11,9 @@ version = "0.1.0"
 cuda = "12.0"
 
 [dependencies]
+# pytorch = ">=2.8.0,<3"
+pytorch-gpu = "*"
+
 python = "3.13.*"
 ipykernel = ">=6.30.1,<7"
 ipywidgets = ">=8.1.7,<9"
@@ -20,5 +23,3 @@ pillow = ">=11.3.0,<12"
 matplotlib = ">=3.10.6,<4"
 python-dotenv = ">=1.1.1,<2"
 wandb = ">=0.21.1,<0.22"
-# pytorch = ">=2.8.0,<3"
-pytorch-gpu = "*"
