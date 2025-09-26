@@ -1,3 +1,12 @@
+#!/bin/bash
+
+# Check that exactly one argument is passed
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 <config_file>"
+  exit 1
+fi
+
+
 runai submit \
   --job-name-prefix train \
   --image ic-registry.epfl.ch/tml/tml:v2 \
@@ -22,4 +31,4 @@ runai submit \
   --tty \
   --stdin \
   --allow-privilege-escalation \
-  --command -- /bin/bash -c "cd /tmlscratch/vanousek/scaling && ../bin/pixi run python train.py"
+  --command -- /bin/bash -c "cd /tmlscratch/vanousek/scaling && ../bin/pixi run python train.py --config $CONFIG"

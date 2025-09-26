@@ -7,12 +7,12 @@ model_shape:
   d_vocab: 4096
 
 # Training hyperparameters
-batch_size: 256
-batches: 30000
+batch_size: 128
+batches: 60000
 seq_len: 128
 
 gradient_accumulation_steps: 1
-learning_rate: 1e-3
+learning_rate: 1e-4
 lr_warmup_steps: 100
 weight_decay: 0.01
 
