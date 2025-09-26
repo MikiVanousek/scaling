@@ -9,6 +9,7 @@ import wandb
 import argparse
 import yaml
 import numpy as np
+from itertools import cycle
 
 class SimpleTransformer(nn.Module):
     def __init__(self, d_vocab, d_model, n_heads, layers, seq_len):
@@ -82,10 +83,15 @@ def main():
     wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], config=config)
     print(f"Using config: {args.config}")
 
+    print(f"Training on {config['batches'] * config['batch_size'] * config['seq_len']/1e6}M tokens")
+    print(f"Validation on {config['validation_batches'] * config['validation_batch_size'] * config['seq_len']/1e6}M tokens")
+
+
     dataset = load_dataset(config['dataset'])
     train_data = dataset['train']
     train_data.set_format(type="torch", columns=["input_ids"])
     train_loader = DataLoader(train_data, batch_size=config['batch_size'], shuffle=True)
+    print(f"Epochs: {config['batches'] * config['batch_size'] / len(train_data)}")
 
     val_data = dataset['test']
     val_data = val_data.select(range(config['validation_batches'] * config['validation_batch_size']))
@@ -103,15 +109,14 @@ def main():
                      lr=float(config['learning_rate']),
                      weight_decay=float(config['weight_decay']))
 
-    total_steps = config['samples'] // config['batch_size']
-    scheduler = CosineAnnealingLR(optimizer, T_max=total_steps, eta_min=0)
-    
+    scheduler = CosineAnnealingLR(optimizer, T_max=config['batches'], eta_min=0)
+
     # Training loop
     model.train()
-    step = 0
-    
 
-    for batch in train_loader:
+    batch_iterator = cycle(train_loader)
+    for batch_num in range(config['batches']):
+        batch = next(batch_iterator)
         input_ids = batch["input_ids"].to(device)
         
         outputs = model(input_ids[:, :-1])
@@ -130,19 +135,18 @@ def main():
         wandb.log({
             'loss': loss.item(),
             'learning_rate': scheduler.get_last_lr()[0],
-            'step': step
+            'step': batch_num
         })
-        
-        step += 1
-        if step % config['eval_interval'] == 0:
+
+        if (batch_num + 1) % config['eval_interval'] == 0:
             loss_val, (lower, upper) = evaluate(model, val_loader)
             wandb.log({
                 'val_loss': loss_val,
                 'val_loss_ci_lower': lower,
                 'val_loss_ci_upper': upper,
-                'step': step
+                'step': batch_num
             })
-            print(f"Step {step}: Train Loss {loss.item():.4f}, Val Loss {loss_val:.4f} [{lower:.4f}, {upper:.4f}]")
+            print(f"Step {batch_num}: Train Loss {loss.item():.4f}, Val Loss {loss_val:.4f} [{lower:.4f}, {upper:.4f}]")
             model.train()
         
     
