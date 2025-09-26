@@ -8,13 +8,13 @@ version = "0.1.0"
 [tasks]
 
 [system-requirements]
-# cuda = "12.0"
+cuda = "12.0"
 
 [dependencies]
 pytorch = "*"
-# pytorch-gpu = "*"
+pytorch-gpu = "*"
+# python = "3.13.*"
 
-python = "3.13.*"
 ipykernel = ">=6.30.1,<7"
 ipywidgets = ">=8.1.7,<9"
 transformers = ">=4.56.2,<5"
