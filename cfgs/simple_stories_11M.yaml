@@ -17,7 +17,7 @@ weight_decay: 0.01
 eval_interval: 100
 
 validation_batch_size: 2048
-validation_batches: 100
+validation_batches: 50
 
 # Wandb configuration
 wandb_entity: miki-and-tml
