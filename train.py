@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from transformers import AutoTokenizer, PreTrainedTokenizerFast
+from transformers import AutoTokenizer, PreTrainedTokenizerFast, get_cosine_schedule_with_warmup
 from datasets import load_dataset
 import wandb
 import argparse
@@ -14,6 +14,8 @@ from itertools import cycle
 class SimpleTransformer(nn.Module):
     def __init__(self, d_vocab, d_model, n_heads, layers, seq_len):
         super().__init__()
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+
         self.d_model = d_model
         self.embedding = nn.Embedding(d_vocab, d_model)
         self.pos_embedding = nn.Embedding(seq_len, d_model)
@@ -109,7 +111,11 @@ def main():
                      lr=float(config['learning_rate']),
                      weight_decay=float(config['weight_decay']))
 
-    scheduler = CosineAnnealingLR(optimizer, T_max=config['batches'], eta_min=0)
+    scheduler = get_cosine_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=config['lr_warmup_steps'],
+        num_training_steps=config['batches']
+    )
 
     # Training loop
     model.train()
