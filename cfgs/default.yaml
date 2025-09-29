@@ -8,17 +8,16 @@ model_shape:
 
 # Training hyperparameters
 batch_size: 64
-batches: 1000
 seq_len: 128
+tokens: 81920
 
 gradient_accumulation_steps: 1
 learning_rate: 1e-3
 lr_warmup_steps: 100
 weight_decay: 0.01
-eval_interval: 100
 
+eval_interval: 100
 validation_batch_size: 1024
-validation_batches: 10
 
 # Wandb configuration
 wandb_entity: miki-and-tml

@@ -74,6 +74,42 @@ def evaluate(model, val_dataset_loader, n_bootstrap=1000, ci=95):
 
     return mean_loss, (lower, upper)
 
+def calculate_flops_per_token(seq_len, d_model, n_heads, layers, d_vocab, ffw_size=4):
+
+
+    key_size = d_model // n_heads
+
+    # ---- Embeddings ----
+    embeddings = 2 * seq_len * d_model * d_vocab
+    # ---- Attention ----
+    # Q, K, V projections
+    qkv = 2 * 3 * seq_len * d_model * (key_size * n_heads)
+
+    # Key @ Query logits
+    kq = 2 * seq_len * seq_len * (key_size * n_heads)
+
+    # Softmax
+    softmax = 3 * n_heads * seq_len * seq_len
+
+    # Softmax reductions
+    softmax_red = 2 * seq_len * seq_len * (key_size * n_heads)
+
+    # Final linear
+    final_linear = 2 * seq_len * (key_size * n_heads) * d_model
+
+    attention = qkv + kq + softmax + softmax_red + final_linear
+
+    # ---- Dense block ----
+    dense = 2 * seq_len * (d_model * ffw_size + d_model * ffw_size)
+
+    # ---- Final logits ----
+    logits = 2 * seq_len * d_model * d_vocab
+
+    # ---- Total FLOPs ----
+    total = embeddings + layers * (attention + dense) + logits
+    assert total % seq_len == 0
+    return total // seq_len  # per token
+
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--config', type=str, default='cfgs/default.yaml', help='Path to config file')
@@ -85,18 +121,19 @@ def main():
     wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], config=config)
     print(f"Using config: {args.config}")
 
-    print(f"Training on {config['batches'] * config['batch_size'] * config['seq_len']/1e6}M tokens")
-    print(f"Validation on {config['validation_batches'] * config['validation_batch_size'] * config['seq_len']/1e6}M tokens")
 
+    flops_per_token = calculate_flops_per_token(config['seq_len'], **config['model_shape'])
+    print(f"FLOPs per token (non-embedding): {flops_per_token}")
 
     dataset = load_dataset(config['dataset'])
     train_data = dataset['train']
     train_data.set_format(type="torch", columns=["input_ids"])
     train_loader = DataLoader(train_data, batch_size=config['batch_size'], shuffle=True)
-    print(f"Epochs: {config['batches'] * config['batch_size'] / len(train_data)}")
+    tokens = config['tokens']
+    batches = tokens // config['batch_size'] // config['seq_len']
+    print(f"Training on {tokens/1e6}M tokens ({batches / len(train_loader)} epochs)")
 
     val_data = dataset['test']
-    val_data = val_data.select(range(config['validation_batches'] * config['validation_batch_size']))
     val_data.set_format(type="torch", columns=["input_ids"])
     val_loader = DataLoader(val_data, batch_size=config['batch_size'], shuffle=False)
 
@@ -121,7 +158,7 @@ def main():
     model.train()
 
     batch_iterator = cycle(train_loader)
-    for batch_num in range(config['batches']):
+    for batch_num in range(batches):
         batch = next(batch_iterator)
         input_ids = batch["input_ids"].to(device)
         
@@ -138,10 +175,13 @@ def main():
         optimizer.zero_grad()
         
         # Log to wandb
+        tokens_seen = (batch_num + 1) * config['batch_size'] * config['seq_len']
+        compute = tokens_seen * flops_per_token
         wandb.log({
             'loss': loss.item(),
             'learning_rate': scheduler.get_last_lr()[0],
-            'step': batch_num
+            'tokens_seen': tokens_seen,
+            'compute': compute,
         })
 
         if (batch_num + 1) % config['eval_interval'] == 0:
@@ -150,12 +190,24 @@ def main():
                 'val_loss': loss_val,
                 'val_loss_ci_lower': lower,
                 'val_loss_ci_upper': upper,
-                'step': batch_num
+                'tokens_seen': tokens_seen,
+                'compute': compute,
             })
-            print(f"Step {batch_num}: Train Loss {loss.item():.4f}, Val Loss {loss_val:.4f} [{lower:.4f}, {upper:.4f}]")
+            print(f"Batch {batch_num+1}/{batches}, Train Loss: {loss.item():.4f}, Val Loss: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]")
             model.train()
         
     
+    # final evaluation
+    loss_val, (lower, upper) = evaluate(model, val_loader)
+    wandb.log({
+        'val_loss': loss_val,
+        'val_loss_ci_lower': lower,
+        'val_loss_ci_upper': upper,
+        'tokens_seen': tokens_seen,
+        'compute': compute,
+    })
+    print(f"Batch {batch_num+1}/{batches}, Train Loss: {loss.item():.4f}, Val Loss: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]")
+
     wandb.finish()
 
 if __name__ == "__main__":
