@@ -151,7 +151,7 @@ def main():
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
         num_warmup_steps=config['lr_warmup_steps'],
-        num_training_steps=config['batches']
+        num_training_steps=batches
     )
 
     # Training loop
