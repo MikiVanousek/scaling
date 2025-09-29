@@ -125,7 +125,7 @@ def main():
     flops_per_token = calculate_flops_per_token(config['seq_len'], **config['model_shape'])
     print(f"FLOPs per token (non-embedding): {flops_per_token}")
 
-    dataset = load_dataset(config['dataset'], download_mode="force_redownload")
+    dataset = load_dataset(config['dataset'], cache_dir="/tmp")
     train_data = dataset['train']
     train_data.set_format(type="torch", columns=["input_ids"])
     train_loader = DataLoader(train_data, batch_size=config['batch_size'], shuffle=True)
