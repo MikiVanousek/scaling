@@ -3,7 +3,7 @@ dataset: MikiV/SimpleStories-SimpleStories-chunked-128
 model_shape:
   layers: 4
   d_model: 128
-  n_heads: 6
+  n_heads: 4
   d_vocab: 4096
 
 # Training hyperparameters
