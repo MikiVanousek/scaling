@@ -166,7 +166,7 @@ def main():
     model.to(device)
     model_params = model.count_params()
 
-    run_name = f"model_{model_params//1e6}M_tokens_{config['tokens']//1e6}M"
+    run_name = f"model_{model_params/1e6:.1f}M_tokens_{config['tokens']/1e6:.1f}M"
     wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], name=run_name, config=config)
     print(f"Using device: {device}")
     print(f"Model parameters: {model_params/1e6:.2f}M")
