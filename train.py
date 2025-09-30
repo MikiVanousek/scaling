@@ -146,12 +146,9 @@ def main():
     with open(args.config, "r") as f:
         config = yaml.safe_load(f)
 
-    wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], config=config)
-    print(f"Using config: {args.config}")
 
 
     flops_per_token = calculate_flops_per_token(config['seq_len'], **config['model_shape'])
-    print(f"FLOPs per token (non-embedding): {flops_per_token}")
 
     dataset = load_dataset(config['dataset'], cache_dir="/tmp")
     train_data = dataset['train']
@@ -159,7 +156,6 @@ def main():
     train_loader = DataLoader(train_data, batch_size=config['batch_size'], shuffle=True)
     tokens = config['tokens']
     batches = tokens // config['batch_size'] // config['seq_len']
-    print(f"Training on {tokens/1e6}M tokens ({batches / len(train_loader)} epochs)")
 
     val_data = dataset['test']
     val_data.set_format(type="torch", columns=["input_ids"])
@@ -167,9 +163,16 @@ def main():
 
     model = SimpleTransformer(**config['model_shape'], seq_len=config['seq_len'])
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Using device: {device}")
     model.to(device)
-    print(f"Model parameters: {model.count_params()/1e6:.2f}M")
+    model_params = model.count_params()
+
+    run_name = f"model_{model_params//1e6}M_tokens_{config['tokens']//1e6}M"
+    wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], run=run_name, config=config)
+    print(f"Using device: {device}")
+    print(f"Model parameters: {model_params/1e6:.2f}M")
+    print(f"Training on {tokens/1e6}M tokens ({batches / len(train_loader)} epochs)")
+    print(f"FLOPs per token: {flops_per_token}")
+    print(f"Using config: {args.config}")
     
     # Initialize optimizer and scheduler
     optimizer = AdamW(model.parameters(), 
@@ -233,6 +236,7 @@ def main():
         'val_loss_ci_upper': upper,
         'tokens_seen': tokens_seen,
         'compute': compute,
+        'params': model.count_params(),
     })
     print(f"Batch {batch_num+1}/{batches}, Train Loss: {loss.item():.4f}, Val Loss: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]")
 
