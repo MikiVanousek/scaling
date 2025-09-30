@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -18,7 +19,7 @@ class SimpleTransformer(nn.Module):
 
         self.d_model = d_model
         self.embedding = nn.Embedding(d_vocab, d_model)
-        self.pos_embedding = nn.Embedding(seq_len, d_model)
+        self.pos_embedding = SinusoidalPositionalEmbedding(d_model, max_len=seq_len)
         
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
@@ -34,13 +35,40 @@ class SimpleTransformer(nn.Module):
         seq_len = x.size(1)
         pos_ids = torch.arange(seq_len, device=x.device).unsqueeze(0).expand_as(x)
         
-        x = self.embedding(x) + self.pos_embedding(pos_ids)
+        x = self.embedding(x)
+        pos_emb = self.pos_embedding(x)
+        x += pos_emb
         x = self.transformer(x)
         x = self.ln_f(x)
         return self.lm_head(x)
 
     def count_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+class SinusoidalPositionalEmbedding(nn.Module):
+    """Sinusoidal positional embeddings from 'Attention is All You Need'"""
+    def __init__(self, d_model, max_len=2048):
+        super().__init__()
+        
+        # Create positional encoding matrix
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * 
+                            (-math.log(10000.0) / d_model))
+        
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        
+        # Register as buffer (not a parameter, but part of state)
+        self.register_buffer('pe', pe)
+    def forward(self, x):
+        """
+        Args:
+            x: Tensor of shape (batch_size, seq_len, d_model)
+        Returns:
+            Positional embeddings of shape (batch_size, seq_len, d_model)
+        """
+        return self.pe[:x.size(1), :]
 
 def load_config(config_path):
     with open(config_path, 'r') as f:
