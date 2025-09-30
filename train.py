@@ -167,7 +167,7 @@ def main():
     model_params = model.count_params()
 
     run_name = f"model_{model_params//1e6}M_tokens_{config['tokens']//1e6}M"
-    wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], run=run_name, config=config)
+    wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], name=run_name, config=config)
     print(f"Using device: {device}")
     print(f"Model parameters: {model_params/1e6:.2f}M")
     print(f"Training on {tokens/1e6}M tokens ({batches / len(train_loader)} epochs)")
