@@ -9,7 +9,7 @@ model_shape:
 # Training hyperparameters
 batch_size: 64
 seq_len: 128
-tokens: 30000000
+tokens: 60000000
 
 gradient_accumulation_steps: 1
 learning_rate: 1e-4
