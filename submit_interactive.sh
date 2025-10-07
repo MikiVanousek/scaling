@@ -1,4 +1,5 @@
 runai submit \
+  -p tml-vanousek
   --job-name-prefix train \
   --image ic-registry.epfl.ch/tml/tml:v2 \
   --pvc tml-scratch:/tmlscratch \
