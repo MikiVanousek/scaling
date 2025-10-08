@@ -30,6 +30,7 @@ class SimpleTransformer(nn.Module):
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=layers)
         self.ln_f = nn.LayerNorm(d_model)
         self.lm_head = nn.Linear(d_model, d_vocab)
+        self.attention_mask = nn.Transformer.generate_square_subsequent_mask(seq_len)
         
     def forward(self, x):
         seq_len = x.size(1)
@@ -38,7 +39,7 @@ class SimpleTransformer(nn.Module):
         x = self.embedding(x)
         pos_emb = self.pos_embedding(x)
         x += pos_emb
-        x = self.transformer(x, is_causal=True)
+        x = self.transformer(x, is_causal=True, mask=self.attention_mask)
         x = self.ln_f(x)
         return self.lm_head(x)
 
