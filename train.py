@@ -76,8 +76,7 @@ def load_config(config_path):
 
 def evaluate(model, val_dataset_loader, n_bootstrap=5000, ci=95, criterion=nn.CrossEntropyLoss()):
     model.eval()
-    # TODO Remove me
-    model.train()
+
     batch_losses = []
     with torch.no_grad():
         for batch in val_dataset_loader:
