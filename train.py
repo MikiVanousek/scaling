@@ -39,7 +39,8 @@ class SimpleTransformer(nn.Module):
         x = self.embedding(x)
         pos_emb = self.pos_embedding(x)
         x += pos_emb
-        x = self.transformer(x, is_causal=True, mask=self.attention_mask)
+        mask = self.attention_mask[:seq_len, :seq_len]
+        x = self.transformer(x, mask=mask, is_causal=True)
         x = self.ln_f(x)
         return self.lm_head(x)
 
