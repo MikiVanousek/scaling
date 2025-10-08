@@ -74,10 +74,10 @@ def load_config(config_path):
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-def evaluate(model, val_dataset_loader, n_bootstrap=1000, ci=95):
+def evaluate(model, val_dataset_loader, n_bootstrap=5000, ci=95, criterion=nn.CrossEntropyLoss()):
     model.eval()
-    criterion = nn.CrossEntropyLoss()
-
+    # TODO Remove me
+    model.train()
     batch_losses = []
     with torch.no_grad():
         for batch in val_dataset_loader:
