@@ -38,7 +38,7 @@ class SimpleTransformer(nn.Module):
         x = self.embedding(x)
         pos_emb = self.pos_embedding(x)
         x += pos_emb
-        x = self.transformer(x, tgt_is_causal=True)
+        x = self.transformer(x, is_causal=True)
         x = self.ln_f(x)
         return self.lm_head(x)
 
