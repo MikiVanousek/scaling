@@ -21,13 +21,13 @@ class SimpleTransformer(nn.Module):
         self.embedding = nn.Embedding(d_vocab, d_model)
         self.pos_embedding = SinusoidalPositionalEmbedding(d_model, max_len=seq_len)
         
-        encoder_layer = nn.TransformerEncoderLayer(
+        encoder_layer = nn.TransformerDecoderLayer(
             d_model=d_model,
             nhead=n_heads,
             dim_feedforward=d_model * 4,
             batch_first=True
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=layers)
+        self.transformer = nn.TransformerDecoder(encoder_layer, num_layers=layers)
         self.ln_f = nn.LayerNorm(d_model)
         self.lm_head = nn.Linear(d_model, d_vocab)
         
