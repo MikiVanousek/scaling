@@ -5,72 +5,16 @@ from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import AutoTokenizer, PreTrainedTokenizerFast, get_cosine_schedule_with_warmup
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import wandb
 import argparse
 import yaml
 import numpy as np
 from itertools import cycle
 
-class SimpleTransformer(nn.Module):
-    def __init__(self, d_vocab, d_model, n_heads, layers, seq_len):
-        super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+from doclang_scaling.config import DoclangConfig
+from doclang_scaling.transformers import SimpleTransformer
 
-        self.d_model = d_model
-        self.embedding = nn.Embedding(d_vocab, d_model)
-        self.pos_embedding = SinusoidalPositionalEmbedding(d_model, max_len=seq_len)
-        
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=n_heads,
-            dim_feedforward=d_model * 4,
-            batch_first=True
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=layers)
-        self.ln_f = nn.LayerNorm(d_model)
-        self.lm_head = nn.Linear(d_model, d_vocab)
-        self.attention_mask = nn.Transformer.generate_square_subsequent_mask(seq_len)
-        
-    def forward(self, x):
-        seq_len = x.size(1)
-        pos_ids = torch.arange(seq_len, device=x.device).unsqueeze(0).expand_as(x)
-        
-        x = self.embedding(x)
-        pos_emb = self.pos_embedding(x)
-        x += pos_emb
-        mask = self.attention_mask[:seq_len, :seq_len].to(x.device)
-        x = self.transformer(x, mask=mask, is_causal=True)
-        x = self.ln_f(x)
-        return self.lm_head(x)
-
-    def count_params(self):
-        return sum(p.numel() for p in self.parameters() if p.requires_grad)
-
-class SinusoidalPositionalEmbedding(nn.Module):
-    """Sinusoidal positional embeddings from 'Attention is All You Need'"""
-    def __init__(self, d_model, max_len=2048):
-        super().__init__()
-        
-        # Create positional encoding matrix
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * 
-                            (-math.log(10000.0) / d_model))
-        
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        
-        # Register as buffer (not a parameter, but part of state)
-        self.register_buffer('pe', pe)
-    def forward(self, x):
-        """
-        Args:
-            x: Tensor of shape (batch_size, seq_len, d_model)
-        Returns:
-            Positional embeddings of shape (batch_size, seq_len, d_model)
-        """
-        return self.pe[:x.size(1), :]
 
 def load_config(config_path):
     with open(config_path, 'r') as f:
@@ -139,50 +83,45 @@ def calculate_flops_per_token(seq_len, d_model, n_heads, layers, d_vocab, ffw_si
     assert total % seq_len == 0
     return total // seq_len  # per token
 
-def main():
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument('--config', type=str, default='cfgs/default.yaml', help='Path to config file')
-    args = argparser.parse_args()
+def main(config: DoclangConfig):
+    flops_per_token = calculate_flops_per_token(config.training.seq_len, **config.model_shape.__dict__)
 
-    with open(args.config, "r") as f:
-        config = yaml.safe_load(f)
-
-
-
-    flops_per_token = calculate_flops_per_token(config['seq_len'], **config['model_shape'])
-
-    dataset = load_dataset(config['dataset'], cache_dir="/tmp")
+    dataset = load_dataset(config.dataset, cache_dir="/tmp")
     train_data = dataset['train']
-    train_data.set_format(type="torch", columns=["input_ids"])
-    train_loader = DataLoader(train_data, batch_size=config['batch_size'], shuffle=True)
-    tokens = config['tokens']
-    batches = tokens // config['batch_size'] // config['seq_len']
+    train_data.set_format(type="torch", columns=["input_ids"]) # type: ignore
+    train_loader = DataLoader(train_data, batch_size=config.training.batch_size, shuffle=True) # type: ignore
+    tokens = config.training.tokens
+    batches = tokens // config.training.batch_size // config.training.seq_len
 
     val_data = dataset['test']
-    val_data.set_format(type="torch", columns=["input_ids"])
-    val_loader = DataLoader(val_data, batch_size=config['batch_size'], shuffle=False)
+    val_data.set_format(type="torch", columns=["input_ids"]) # type: ignore
+    val_loader = DataLoader(val_data, batch_size=config.training.validation_batch_size, shuffle=False) # type: ignore
 
-    model = SimpleTransformer(**config['model_shape'], seq_len=config['seq_len'])
+    model = SimpleTransformer(**config.model_shape.__dict__, seq_len=config.training.seq_len)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model_params = model.count_params()
 
-    run_name = f"model_{model_params/1e6:.1f}M_tokens_{config['tokens']/1e6:.1f}M"
-    wandb.init(project=config['wandb_project'], entity=config['wandb_entity'], name=run_name, config=config)
+    run_name = f"model_{model_params/1e6:.1f}M_tokens_{config.training.tokens /1e6:.1f}M"
+    wandb.init(project=config.wandb.wandb_project, entity=config.wandb.wandb_entity, name=run_name)
+
     print(f"Using device: {device}")
     print(f"Model parameters: {model_params/1e6:.2f}M")
     print(f"Training on {tokens/1e6}M tokens ({batches / len(train_loader)} epochs)")
     print(f"FLOPs per token: {flops_per_token}")
-    print(f"Using config: {args.config}")
+
+
+    print(f"Using config:'\n{config}")
+
     
     # Initialize optimizer and scheduler
     optimizer = AdamW(model.parameters(), 
-                     lr=float(config['learning_rate']),
-                     weight_decay=float(config['weight_decay']))
+                     lr=float(config.training.learning_rate),
+                     weight_decay=float(config.training.weight_decay))
 
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
-        num_warmup_steps=config['lr_warmup_steps'],
+        num_warmup_steps=config.training.lr_warmup_steps,
         num_training_steps=batches
     )
 
@@ -207,7 +146,7 @@ def main():
         optimizer.zero_grad()
         
         # Log to wandb
-        tokens_seen = (batch_num + 1) * config['batch_size'] * config['seq_len']
+        tokens_seen = (batch_num + 1) * config.training.batch_size * config.training.seq_len
         compute = tokens_seen * flops_per_token
         wandb.log({
             'loss': loss.item(),
@@ -216,7 +155,7 @@ def main():
             'compute': compute,
         })
 
-        if (batch_num + 1) % config['eval_interval'] == 0:
+        if (batch_num + 1) % config.training.eval_interval == 0:
             loss_val, (lower, upper) = evaluate(model, val_loader)
             wandb.log({
                 'val_loss': loss_val,
@@ -235,13 +174,20 @@ def main():
         'val_loss': loss_val,
         'val_loss_ci_lower': lower,
         'val_loss_ci_upper': upper,
-        'tokens_seen': tokens_seen,
-        'compute': compute,
+        'tokens_seen': tokens_seen, # pyright: ignore[reportPossiblyUnboundVariable]
+        'compute': compute, # pyright: ignore[reportPossiblyUnboundVariable]
         'params': model.count_params(),
     })
-    print(f"Batch {batch_num+1}/{batches}, Train Loss: {loss.item():.4f}, Val Loss: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]")
+    print(f"Batch {batch_num+1}/{batches}, Train Loss: {loss.item():.4f}, Val Loss: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]") # pyright: ignore[reportPossiblyUnboundVariable]
 
     wandb.finish()
 
 if __name__ == "__main__":
-    main()
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--config', type=str, default='cfgs/default.yaml', help='Path to config file')
+    args = argparser.parse_args()
+
+    with open(args.config, "r") as f:
+        config = yaml.safe_load(f)
+    training_config = DoclangConfig(**config)
+    main(training_config)
