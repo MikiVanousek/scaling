@@ -216,7 +216,7 @@ def main(config_path: str):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
-        "--cfg", type=str, default="cfgs/default.yaml", help="Path to config file"
+        "--config", type=str, default="cfgs/default.yaml", help="Path to config file"
     )
     args = argparser.parse_args()
     if not os.path.exists(args.cfg):
