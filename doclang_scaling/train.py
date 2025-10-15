@@ -91,7 +91,17 @@ def calculate_flops_per_token(seq_len, d_model, n_heads, layers, d_vocab, ffw_si
     return total // seq_len  # per token
 
 
-def main(config: DoclangConfig, run_name: str):
+def main(config_path: str):
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    # Convert model_shape dict to ModelShape object
+    model_shape_dict = config.pop("model_shape")
+    model_shape = ModelShape(**model_shape_dict)
+    config["model_shape"] = model_shape
+
+    training_config = DoclangConfig(**config)
+    main(training_config, run_name=args.config)
     flops_per_token = calculate_flops_per_token(
         config.seq_len, **config.model_shape.__dict__
     )
@@ -206,17 +216,18 @@ def main(config: DoclangConfig, run_name: str):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
-        "--config", type=str, default="cfgs/default.yaml", help="Path to config file"
+        "--cfg", type=str, default="cfgs/default.yaml", help="Path to config file"
     )
     args = argparser.parse_args()
+    if not os.path.exists(args.cfg):
+        raise FileNotFoundError(f"Config file {args.cfg} not found")
 
-    with open(args.config, "r") as f:
-        config = yaml.safe_load(f)
-
-    # Convert model_shape dict to ModelShape object
-    model_shape_dict = config.pop("model_shape")
-    model_shape = ModelShape(**model_shape_dict)
-    config["model_shape"] = model_shape
-
-    training_config = DoclangConfig(**config)
-    main(training_config, run_name=args.config)
+    # Is it a directory?
+    if os.path.isdir(args.cfg):
+        cfg_files = os.listdir(args.cfg)
+        for cfg_file in cfg_files:
+            if cfg_file.endswith(".yaml"):
+                cfg_path = os.path.join(args.cfg, cfg_file)
+                train(cfg_path)
+    else:
+        train(args.cfg)
