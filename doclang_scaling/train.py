@@ -12,8 +12,8 @@ import yaml
 import numpy as np
 from itertools import cycle
 
-from doclang_scaling.config import DoclangConfig
-from doclang_scaling.transformers import SimpleTransformer
+from doclang_scaling.config import DoclangConfig, ModelShape
+from doclang_scaling.doclang_transformers import SimpleTransformer
 
 
 def load_config(config_path):
@@ -84,26 +84,26 @@ def calculate_flops_per_token(seq_len, d_model, n_heads, layers, d_vocab, ffw_si
     return total // seq_len  # per token
 
 def main(config: DoclangConfig):
-    flops_per_token = calculate_flops_per_token(config.training.seq_len, **config.model_shape.__dict__)
+    flops_per_token = calculate_flops_per_token(config.seq_len, **config.model_shape.__dict__)
 
     dataset = load_dataset(config.dataset, cache_dir="/tmp")
     train_data = dataset['train']
     train_data.set_format(type="torch", columns=["input_ids"]) # type: ignore
-    train_loader = DataLoader(train_data, batch_size=config.training.batch_size, shuffle=True) # type: ignore
-    tokens = config.training.tokens
-    batches = tokens // config.training.batch_size // config.training.seq_len
+    train_loader = DataLoader(train_data, batch_size=config.batch_size, shuffle=True) # type: ignore
+    tokens = config.tokens
+    batches = tokens // config.batch_size // config.seq_len
 
     val_data = dataset['test']
     val_data.set_format(type="torch", columns=["input_ids"]) # type: ignore
-    val_loader = DataLoader(val_data, batch_size=config.training.validation_batch_size, shuffle=False) # type: ignore
+    val_loader = DataLoader(val_data, batch_size=config.validation_batch_size, shuffle=False) # type: ignore
 
-    model = SimpleTransformer(**config.model_shape.__dict__, seq_len=config.training.seq_len)
+    model = SimpleTransformer(**config.model_shape.__dict__, seq_len=config.seq_len)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model_params = model.count_params()
 
-    run_name = f"model_{model_params/1e6:.1f}M_tokens_{config.training.tokens /1e6:.1f}M"
-    wandb.init(project=config.wandb.wandb_project, entity=config.wandb.wandb_entity, name=run_name)
+    run_name = f"model_{model_params/1e6:.1f}M_tokens_{config.tokens /1e6:.1f}M"
+    wandb.init(project=config.wandb_project, entity=config.wandb_entity, name=run_name)
 
     print(f"Using device: {device}")
     print(f"Model parameters: {model_params/1e6:.2f}M")
@@ -116,12 +116,12 @@ def main(config: DoclangConfig):
     
     # Initialize optimizer and scheduler
     optimizer = AdamW(model.parameters(), 
-                     lr=float(config.training.learning_rate),
-                     weight_decay=float(config.training.weight_decay))
+                     lr=float(config.learning_rate),
+                     weight_decay=float(config.weight_decay))
 
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
-        num_warmup_steps=config.training.lr_warmup_steps,
+        num_warmup_steps=config.lr_warmup_steps,
         num_training_steps=batches
     )
 
@@ -146,7 +146,7 @@ def main(config: DoclangConfig):
         optimizer.zero_grad()
         
         # Log to wandb
-        tokens_seen = (batch_num + 1) * config.training.batch_size * config.training.seq_len
+        tokens_seen = (batch_num + 1) * config.batch_size * config.seq_len
         compute = tokens_seen * flops_per_token
         wandb.log({
             'loss': loss.item(),
@@ -155,7 +155,7 @@ def main(config: DoclangConfig):
             'compute': compute,
         })
 
-        if (batch_num + 1) % config.training.eval_interval == 0:
+        if (batch_num + 1) % config.eval_interval == 0:
             loss_val, (lower, upper) = evaluate(model, val_loader)
             wandb.log({
                 'val_loss': loss_val,
@@ -189,5 +189,11 @@ if __name__ == "__main__":
 
     with open(args.config, "r") as f:
         config = yaml.safe_load(f)
+    
+    # Convert model_shape dict to ModelShape object
+    model_shape_dict = config.pop('model_shape')
+    model_shape = ModelShape(**model_shape_dict)
+    config['model_shape'] = model_shape
+    
     training_config = DoclangConfig(**config)
     main(training_config)

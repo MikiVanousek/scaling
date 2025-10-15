@@ -1,17 +1,23 @@
 from dataclasses import dataclass
 
-class NicePrint:
-    def __repr__(self):
-        return '\n'.join(f"{k}: {v}" for k, v in self.__dict__.items())
 @dataclass
-class ModelShape(NicePrint):
+class ModelShape:
     layers: int
     d_model: int
     n_heads: int
     d_vocab: int
 
+    def __repr__(self):
+        return '\n'.join(f"{k}: {v}" for k, v in self.__dict__.items())
 @dataclass
-class TrainingConfig(NicePrint):
+class DoclangConfig:
+    dataset: str
+    model_shape: ModelShape
+
+    wandb_entity: str
+    wandb_project: str
+
+    # Arguments related to training
     batch_size: int
     seq_len: int
     tokens: int
@@ -22,14 +28,5 @@ class TrainingConfig(NicePrint):
     eval_interval: int
     validation_batch_size: int
 
-@dataclass
-class WandbConfig(NicePrint):
-    wandb_entity: str
-    wandb_project: str
-
-@dataclass
-class DoclangConfig(NicePrint):
-    dataset: str
-    model_shape: ModelShape
-    training: TrainingConfig
-    wandb: WandbConfig
+    def __repr__(self):
+        return '\n'.join(f"{k}: {v}" for k, v in self.__dict__.items())
