@@ -31,4 +31,4 @@ runai submit \
   --tty \
   --stdin \
   --allow-privilege-escalation \
-  --command -- /bin/bash -c "cd /tmlscratch/vanousek/scaling && git pull && ../bin/pixi run python train.py --config $1"
+  --command -- /bin/bash -c "cd /tmlscratch/vanousek/scaling && git pull && ../bin/pixi run python -m doclang_scaling.train --config $1"
