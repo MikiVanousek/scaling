@@ -91,7 +91,7 @@ def calculate_flops_per_token(seq_len, d_model, n_heads, layers, d_vocab, ffw_si
     return total // seq_len  # per token
 
 
-def main(config: DoclangConfig):
+def main(config: DoclangConfig, run_name: str):
     flops_per_token = calculate_flops_per_token(
         config.seq_len, **config.model_shape.__dict__
     )
@@ -114,7 +114,6 @@ def main(config: DoclangConfig):
     model.to(device)
     model_params = model.count_params()
 
-    run_name = f"model_{model_params / 1e6:.1f}M_tokens_{config.tokens / 1e6:.1f}M"
     wandb.init(project=config.wandb_project, entity=config.wandb_entity, name=run_name)
 
     print(f"Using device: {device}")
@@ -220,4 +219,4 @@ if __name__ == "__main__":
     config["model_shape"] = model_shape
 
     training_config = DoclangConfig(**config)
-    main(training_config)
+    main(training_config, run_name=args.config)
