@@ -169,7 +169,7 @@ def main(config: DoclangConfig):
             }
         )
 
-        if (batch_num + 1) % config.eval_interval == 0:
+        if config.eval_interval > 0 and (batch_num + 1) % config.eval_interval == 0:
             loss_val, (lower, upper) = evaluate(model, val_loader)
             wandb.log(
                 {
