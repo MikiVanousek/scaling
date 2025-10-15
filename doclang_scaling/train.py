@@ -102,7 +102,7 @@ def main(config_path: str):
     config["model_shape"] = model_shape
 
     training_config = DoclangConfig(**config)
-    main(training_config, run_name=args.config)
+
     flops_per_token = calculate_flops_per_token(
         config.seq_len, **config.model_shape.__dict__
     )
