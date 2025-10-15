@@ -94,14 +94,14 @@ def calculate_flops_per_token(seq_len, d_model, n_heads, layers, d_vocab, ffw_si
 
 def main(config_path: str):
     with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+        config_dict = yaml.safe_load(f)
 
     # Convert model_shape dict to ModelShape object
-    model_shape_dict = config.pop("model_shape")
+    model_shape_dict = config_dict.pop("model_shape")
     model_shape = ModelShape(**model_shape_dict)
-    config["model_shape"] = model_shape
+    config_dict["model_shape"] = model_shape
 
-    training_config = DoclangConfig(**config)
+    config = DoclangConfig(**config_dict)
 
     flops_per_token = calculate_flops_per_token(
         config.seq_len, **config.model_shape.__dict__
