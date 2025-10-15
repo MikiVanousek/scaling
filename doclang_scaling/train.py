@@ -220,15 +220,15 @@ if __name__ == "__main__":
         "--config", type=str, default="cfgs/default.yaml", help="Path to config file"
     )
     args = argparser.parse_args()
-    if not os.path.exists(args.cfg):
-        raise FileNotFoundError(f"Config file {args.cfg} not found")
+    if not os.path.exists(args.config):
+        raise FileNotFoundError(f"Config file {args.config} not found")
 
     # Is it a directory?
-    if os.path.isdir(args.cfg):
-        cfg_files = os.listdir(args.cfg)
+    if os.path.isdir(args.config):
+        cfg_files = os.listdir(args.config)
         for cfg_file in cfg_files:
             if cfg_file.endswith(".yaml"):
-                cfg_path = os.path.join(args.cfg, cfg_file)
+                cfg_path = os.path.join(args.config, cfg_file)
                 train(cfg_path)
     else:
-        train(args.cfg)
+        train(args.config)
