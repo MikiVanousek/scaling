@@ -229,6 +229,6 @@ if __name__ == "__main__":
         for cfg_file in cfg_files:
             if cfg_file.endswith(".yaml"):
                 cfg_path = os.path.join(args.config, cfg_file)
-                train(cfg_path)
+                main(cfg_path)
     else:
-        train(args.config)
+        main(args.config)
