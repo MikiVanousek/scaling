@@ -4,3 +4,5 @@ wandb/**
 *.egg-info
 .envrc
 secret.yaml
+**/__pycache__
+pixi.lock
