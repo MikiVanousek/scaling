@@ -1,0 +1,24 @@
+dataset: MikiV/SimpleStories-SimpleStories-subchunked-64x2
+
+model_shape:
+  layers: 4
+  d_model: 128
+  n_heads: 4
+  d_vocab: 4096
+
+# Training hyperparameters
+batch_size: 64
+seq_len: 128
+tokens: 13500000
+
+gradient_accumulation_steps: 1
+learning_rate: 1e-4
+lr_warmup_steps: 100
+weight_decay: 0.01
+
+eval_interval: 1000
+validation_batch_size: 4096
+
+# Wandb configuration
+wandb_entity: miki-and-tml
+wandb_project: scaling-tests
