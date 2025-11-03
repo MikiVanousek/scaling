@@ -120,7 +120,7 @@ def main(config_path: str):
         val_data, batch_size=config.validation_batch_size, shuffle=False
     )  # type: ignore
 
-    model = AlibiTransformer(**config.model_shape.__dict__, seq_len=config.seq_len)
+    model = AlibiTransformer(**config.model_shape.__dict__) #, seq_len=config.seq_len)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model_params = model.count_params()
@@ -207,6 +207,7 @@ def main(config_path: str):
             "tokens_seen": tokens_seen,  # pyright: ignore[reportPossiblyUnboundVariable]
             "compute": compute,  # pyright: ignore[reportPossiblyUnboundVariable]
             "params": model.count_params(),
+            "chunk_size": config.seq_len,
         }
     )
     print(

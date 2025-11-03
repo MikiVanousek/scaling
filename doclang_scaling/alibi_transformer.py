@@ -153,14 +153,12 @@ class AlibiTransformer(nn.Module):
         d_model: int,
         n_heads: int,
         layers: int,
-        seq_len: int,
         dropout: float = 0.0,
     ):
         super().__init__()
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
         self.d_model = d_model
-        self.seq_len = seq_len
 
         self.embedding = nn.Embedding(d_vocab, d_model)
         self.blocks = nn.ModuleList(
