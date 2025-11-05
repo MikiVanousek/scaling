@@ -113,7 +113,9 @@ def main(config_path: str):
     )
 
     # Load training dataset
-    train_dataset = load_dataset(config.dataset, cache_dir="/tmp")
+    train_dataset = load_dataset(
+        config.train_dataset.name, split=config.train_dataset.split, cache_dir="/tmp"
+    )
     train_dataset.set_format(type="torch", columns=["input_ids"])  # type: ignore
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)  # type: ignore
     tokens = config.tokens
@@ -121,14 +123,15 @@ def main(config_path: str):
 
     # Load validation datasets
     val_loaders = {}
-    for val_dataset_name in config.validation_datasets:
-        val_dataset = load_dataset(val_dataset_name, cache_dir="/tmp")
-        val_data = val_dataset["test"]
-        val_data.set_format(type="torch", columns=["input_ids"])  # type: ignore
+    for val_dataset_config in config.validation_datasets:
+        val_dataset = load_dataset(
+            val_dataset_config.name, split=val_dataset_config.split, cache_dir="/tmp"
+        )
+        val_dataset.set_format(type="torch", columns=["input_ids"])  # type: ignore
         val_loader = DataLoader(
-            val_data, batch_size=config.validation_batch_size, shuffle=False
+            val_dataset, batch_size=config.validation_batch_size, shuffle=False
         )  # type: ignore
-        val_loaders[val_dataset_name] = val_loader
+        val_loaders[val_dataset_config.name] = val_loader
 
     model = AlibiTransformer(**config.model_shape.__dict__)  # , seq_len=config.seq_len)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

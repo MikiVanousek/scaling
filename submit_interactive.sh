@@ -1,6 +1,15 @@
+JOB_PREFIX="j"
+JOB_NUM=1
+while runai list | grep -q "${JOB_PREFIX}${JOB_NUM}"; do
+  ((JOB_NUM++))
+done
+
+JOB_NAME="${JOB_PREFIX}${JOB_NUM}"
+echo "Submitting job: $JOB_NAME"
+
 runai submit \
   -p tml-vanousek \
-  --job-name-prefix train \
+  --name $JOB_NAME \
   --image ic-registry.epfl.ch/tml/tml:v2 \
   --pvc tml-scratch:/tmlscratch \
   --working-dir / \

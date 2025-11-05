@@ -1,6 +1,11 @@
-dataset: MikiV/SimpleStories-SimpleStories-chunked-128
+train_dataset:
+  name: MikiV/SimpleStories-SimpleStories-chunked-128
+  split: train
 validation_datasets:
-  - MikiV/SimpleStories-SimpleStories-chunked-128
+  - name: MikiV/SimpleStories-SimpleStories-chunked-128
+    split: validation
+  # - name: some/other-dataset
+  #   split: test
 
 model_shape:
   layers: 2
