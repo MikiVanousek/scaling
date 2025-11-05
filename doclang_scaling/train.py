@@ -27,6 +27,11 @@ def load_config(config_path):
         return yaml.safe_load(f)
 
 
+def create_safe_dataset_name(dataset_name):
+    """Create a safe name for wandb logging by replacing special characters."""
+    return dataset_name.replace("/", "_").replace("-", "_")
+
+
 def evaluate(
     model, val_dataset_loader, n_bootstrap=5000, ci=95, criterion=nn.CrossEntropyLoss()
 ):
@@ -107,20 +112,25 @@ def main(config_path: str):
         config.seq_len, **config.model_shape.__dict__
     )
 
-    dataset = load_dataset(config.dataset, cache_dir="/tmp")
-    train_data = dataset["train"]
-    train_data.set_format(type="torch", columns=["input_ids"])  # type: ignore
-    train_loader = DataLoader(train_data, batch_size=config.batch_size, shuffle=True)  # type: ignore
+    # Load training dataset
+    train_dataset = load_dataset(config.dataset, cache_dir="/tmp")
+    train_dataset.set_format(type="torch", columns=["input_ids"])  # type: ignore
+    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)  # type: ignore
     tokens = config.tokens
     batches = tokens // config.batch_size // config.seq_len
 
-    val_data = dataset["test"]
-    val_data.set_format(type="torch", columns=["input_ids"])  # type: ignore
-    val_loader = DataLoader(
-        val_data, batch_size=config.validation_batch_size, shuffle=False
-    )  # type: ignore
+    # Load validation datasets
+    val_loaders = {}
+    for val_dataset_name in config.validation_datasets:
+        val_dataset = load_dataset(val_dataset_name, cache_dir="/tmp")
+        val_data = val_dataset["test"]
+        val_data.set_format(type="torch", columns=["input_ids"])  # type: ignore
+        val_loader = DataLoader(
+            val_data, batch_size=config.validation_batch_size, shuffle=False
+        )  # type: ignore
+        val_loaders[val_dataset_name] = val_loader
 
-    model = AlibiTransformer(**config.model_shape.__dict__) #, seq_len=config.seq_len)
+    model = AlibiTransformer(**config.model_shape.__dict__)  # , seq_len=config.seq_len)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model_params = model.count_params()
@@ -182,36 +192,58 @@ def main(config_path: str):
         )
 
         if config.eval_interval > 0 and (batch_num + 1) % config.eval_interval == 0:
-            loss_val, (lower, upper) = evaluate(model, val_loader)
-            wandb.log(
-                {
-                    "val_loss": loss_val,
-                    "val_loss_ci_lower": lower,
-                    "val_loss_ci_upper": upper,
-                    "tokens_seen": tokens_seen,
-                    "compute": compute,
-                }
-            )
+            log_data = {
+                "tokens_seen": tokens_seen,
+                "compute": compute,
+            }
+
+            val_losses_str = []
+            for val_dataset_name, val_loader in val_loaders.items():
+                loss_val, (lower, upper) = evaluate(model, val_loader)
+                safe_name = create_safe_dataset_name(val_dataset_name)
+                log_data.update(
+                    {
+                        f"val_loss_{safe_name}": loss_val,
+                        f"val_loss_ci_lower_{safe_name}": lower,
+                        f"val_loss_ci_upper_{safe_name}": upper,
+                    }
+                )
+                val_losses_str.append(
+                    f"{val_dataset_name}: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]"
+                )
+
+            wandb.log(log_data)
             print(
-                f"Batch {batch_num + 1}/{batches}, Train Loss: {loss.item():.4f}, Val Loss: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]"
+                f"Batch {batch_num + 1}/{batches}, Train Loss: {loss.item():.4f}, Val Losses: {', '.join(val_losses_str)}"
             )
             model.train()
 
     # final evaluation
-    loss_val, (lower, upper) = evaluate(model, val_loader)
-    wandb.log(
-        {
-            "val_loss": loss_val,
-            "val_loss_ci_lower": lower,
-            "val_loss_ci_upper": upper,
-            "tokens_seen": tokens_seen,  # pyright: ignore[reportPossiblyUnboundVariable]
-            "compute": compute,  # pyright: ignore[reportPossiblyUnboundVariable]
-            "params": model.count_params(),
-            "chunk_size": config.seq_len,
-        }
-    )
+    final_log_data = {
+        "tokens_seen": tokens_seen,  # pyright: ignore[reportPossiblyUnboundVariable]
+        "compute": compute,  # pyright: ignore[reportPossiblyUnboundVariable]
+        "params": model.count_params(),
+        "chunk_size": config.seq_len,
+    }
+
+    final_val_losses_str = []
+    for val_dataset_name, val_loader in val_loaders.items():
+        loss_val, (lower, upper) = evaluate(model, val_loader)
+        safe_name = create_safe_dataset_name(val_dataset_name)
+        final_log_data.update(
+            {
+                f"final_val_loss_{safe_name}": loss_val,
+                f"final_val_loss_ci_lower_{safe_name}": lower,
+                f"final_val_loss_ci_upper_{safe_name}": upper,
+            }
+        )
+        final_val_losses_str.append(
+            f"{val_dataset_name}: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]"
+        )
+
+    wandb.log(final_log_data)
     print(
-        f"Batch {batch_num + 1}/{batches}, Train Loss: {loss.item():.4f}, Val Loss: {loss_val:.4f} [{lower:.4f}, {upper:.4f}]"
+        f"Final - Batch {batch_num + 1}/{batches}, Train Loss: {loss.item():.4f}, Val Losses: {', '.join(final_val_losses_str)}"
     )  # pyright: ignore[reportPossiblyUnboundVariable]
 
     wandb.finish()

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class ModelShape:
     layers: int
@@ -8,10 +9,13 @@ class ModelShape:
     d_vocab: int
 
     def __repr__(self):
-        return '\n'.join(f"{k}: {v}" for k, v in self.__dict__.items())
+        return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
+
+
 @dataclass
 class DoclangConfig:
-    dataset: str
+    train_dataset: str
+    validation_datasets: list[str]
     model_shape: ModelShape
 
     wandb_entity: str
@@ -29,4 +33,4 @@ class DoclangConfig:
     validation_batch_size: int
 
     def __repr__(self):
-        return '\n'.join(f"{k}: {v}" for k, v in self.__dict__.items())
+        return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())

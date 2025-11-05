@@ -1,4 +1,6 @@
 dataset: MikiV/SimpleStories-SimpleStories-chunked-128
+validation_datasets:
+  - MikiV/SimpleStories-SimpleStories-chunked-128
 
 model_shape:
   layers: 2
