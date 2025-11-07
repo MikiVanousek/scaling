@@ -1,4 +1,34 @@
 #!/bin/bash
+if [ -z "$1" ]; then
+  echo "Error: No argument provided"
+  echo "Usage: $0 <config path>"
+  exit 1
+fi
+
+# Check for uncommitted changes
+if ! git diff-index --quiet HEAD --; then
+  echo "Warning: You have uncommitted changes."
+  git status --porcelain
+  read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Submission cancelled."
+    exit 1
+  fi
+fi
+
+# Check for unpushed commits
+UNPUSHED=$(git log origin/main..HEAD --oneline)
+if [ ! -z "$UNPUSHED" ]; then
+  echo "Warning: You have unpushed commits:"
+  echo "$UNPUSHED"
+  read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Submission cancelled."
+    exit 1
+  fi
+fi
 
 # Check that exactly one argument is passed
 if [ "$#" -ne 1 ]; then
