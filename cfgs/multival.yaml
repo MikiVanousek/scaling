@@ -2,10 +2,12 @@ train_dataset:
   name: MikiV/SimpleStories-SimpleStories-chunked-128
   split: train
 validation_datasets:
+  - name: MikiV/SimpleStories-SimpleStories-subchunked-16x8
+    split: validation
   - name: MikiV/SimpleStories-SimpleStories-subchunked-32x4
     split: validation
-  # - name: MikiV/SimpleStories-SimpleStories-subchunked-64x2
-  #   split: validation
+  - name: MikiV/SimpleStories-SimpleStories-subchunked-64x2
+    split: validation
   - name: MikiV/SimpleStories-SimpleStories-chunked-128
     split: validation
 
@@ -25,7 +27,7 @@ learning_rate: 1e-3
 lr_warmup_steps: 100
 weight_decay: 0.01
 
-eval_interval: 100
+eval_interval: -1
 validation_batch_size: 1024
 
 # Wandb configuration

@@ -25,7 +25,7 @@ learning_rate: 1e-3
 lr_warmup_steps: 100
 weight_decay: 0.01
 
-eval_interval: 100
+eval_interval: -1
 validation_batch_size: 1024
 
 # Wandb configuration

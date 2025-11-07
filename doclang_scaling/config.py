@@ -36,7 +36,7 @@ class DoclangConfig:
     learning_rate: float
     lr_warmup_steps: int
     weight_decay: float
-    eval_interval: int
+    eval_interval: -1
     validation_batch_size: int
 
     def __post_init__(self):
