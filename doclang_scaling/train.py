@@ -1,22 +1,23 @@
+import argparse
 import math
 import os
+from itertools import cycle
+
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+import yaml
+from datasets import Dataset, load_dataset
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.utils.data import DataLoader
 from transformers import (
     AutoTokenizer,
     PreTrainedTokenizerFast,
     get_cosine_schedule_with_warmup,
 )
-from datasets import load_dataset, Dataset
-import wandb
-import argparse
-import yaml
-import numpy as np
-from itertools import cycle
 
+import wandb
 from doclang_scaling.alibi_transformer import AlibiTransformer
 from doclang_scaling.config import DoclangConfig, ModelShape
 from doclang_scaling.doclang_transformers import SimpleTransformer
@@ -111,6 +112,7 @@ def main(config_path: str):
     flops_per_token = calculate_flops_per_token(
         config.seq_len, **config.model_shape.__dict__
     )
+    print(f"FLOPs per token: {flops_per_token}")
 
     # Load training dataset
     train_dataset = load_dataset(
