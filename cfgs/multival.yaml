@@ -6,8 +6,8 @@ validation_datasets:
     split: validation
   # - name: MikiV/SimpleStories-SimpleStories-subchunked-64x2
   #   split: validation
-  # - name: MikiV/SimpleStories-SimpleStories-chunked-128
-  #   split: validation
+  - name: MikiV/SimpleStories-SimpleStories-chunked-128
+    split: validation
 
 model_shape:
   layers: 2
