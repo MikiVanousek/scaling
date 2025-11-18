@@ -24,7 +24,7 @@ if [ ! -z "$UNPUSHED" ]; then
 fi
 JOB_PREFIX="j"
 JOB_NUM=1
-while runai list | grep -q "${JOB_PREFIX}${JOB_NUM}"; do
+while runai list -p tml-vanousek | grep -q "${JOB_PREFIX}${JOB_NUM}"; do
   ((JOB_NUM++))
 done
 
