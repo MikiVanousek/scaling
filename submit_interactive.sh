@@ -1,9 +1,3 @@
-if [ -z "$1" ]; then
-  echo "Error: No argument provided"
-  echo "Usage: $0 <config path>"
-  exit 1
-fi
-
 # Check for uncommitted changes
 if ! git diff-index --quiet HEAD --; then
   echo "Warning: You have uncommitted changes."
