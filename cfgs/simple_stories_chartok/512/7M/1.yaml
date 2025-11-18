@@ -2,8 +2,6 @@ train_dataset:
   name: MikiV/SimpleStories-SimpleStories-chunked-512
   split: train
 validation_datasets:
-  - name: MikiV/SimpleStories-SimpleStories-subchunked-64x8
-    split: validation
   - name: MikiV/SimpleStories-SimpleStories-subchunked-128x4
     split: validation
   - name: MikiV/SimpleStories-SimpleStories-subchunked-256x2
