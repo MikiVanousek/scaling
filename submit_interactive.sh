@@ -58,7 +58,7 @@ runai submit \
   --run-as-gid 11180 \
   --working-dir / \
   --image-pull-policy IfNotPresent \
-  --memory 8G \
+  --memory 64G \
   --tty \
   --stdin \
   --allow-privilege-escalation \
