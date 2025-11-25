@@ -28,7 +28,7 @@ lr_warmup_steps: 100
 weight_decay: 0.01
 
 eval_interval: -1
-validation_batch_size: 4096
+validation_batch_size: 1024
 
 # Wandb configuration
 wandb_entity: miki-and-tml
