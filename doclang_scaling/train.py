@@ -115,7 +115,9 @@ def main(config_path: str):
 
     print(f"Using device: {device}")
     print(f"Model parameters: {model_params / 1e6:.2f}M")
-    print(f"Training on {tokens / 1e6}M tokens ({batches / len(train_loader)} epochs)")
+    epochs = batches / len(train_loader)
+    assert epochs < 3.0, f"Number of epochs ({epochs}) exceeds maximum allowed (3.0)"
+    print(f"Training on {tokens / 1e6}M tokens ({epochs:.2f} epochs)")
     print(f"FLOPs per token: {flops_per_token}")
 
     print(f"Using config:'\n{config}")

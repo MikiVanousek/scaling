@@ -70,12 +70,11 @@ class DoclangConfig:
 
     wandb_entity: str
     wandb_project: str
-    hf_model_id: Optional[str] = None
 
     # Arguments related to training
     batch_size: int
     context_length: int
-    gradient_accumulation_steps: int
+
     learning_rate: float
     lr_warmup_steps: int
     weight_decay: float
@@ -83,6 +82,7 @@ class DoclangConfig:
     tokens: Optional[int] = None
     target_compute: Optional[int] = None
     eval_interval: int = -1
+    hf_model_id: Optional[str] = None
 
     def __post_init__(self):
         # Convert train_dataset to DatasetConfig if needed

@@ -22,7 +22,6 @@ batch_size: 64
 context_length: 128
 tokens: 60000000
 
-gradient_accumulation_steps: 1
 learning_rate: 1e-4
 lr_warmup_steps: 100
 weight_decay: 0.01
