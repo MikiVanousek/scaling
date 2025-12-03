@@ -18,7 +18,7 @@ model_shape:
 # Training hyperparameters
 batch_size: 256
 context_length: 128
-tokens: 432000000
+compute: 364963772235776
 
 gradient_accumulation_steps: 1
 learning_rate: 1e-4
@@ -31,3 +31,5 @@ validation_batch_size: 4096
 # Wandb configuration
 wandb_entity: miki-and-tml
 wandb_project: compute-match
+
+hf_model_id: MikiV/1M-5
