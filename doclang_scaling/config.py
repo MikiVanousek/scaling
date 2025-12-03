@@ -70,6 +70,7 @@ class DoclangConfig:
 
     wandb_entity: str
     wandb_project: str
+    hf_model_id: Optional[str] = None
 
     # Arguments related to training
     batch_size: int

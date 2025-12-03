@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import yaml
 from datasets import Dataset, load_dataset
+from huggingface_hub import create_repo, upload_folder
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
@@ -218,6 +219,47 @@ def main(config_path: str):
     print(
         f"Final - Batch {batch_num + 1}/{batches}, Train Loss: {loss.item():.4f}, Val Losses: {', '.join(final_val_losses_str)}"
     )  # pyright: ignore[reportPossiblyUnboundVariable]
+
+    # Optionally upload to Hugging Face Hub
+    hf_model_id = getattr(config, "hf_model_id", None)
+    if hf_model_id:
+        hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
+        if not hf_token:
+            print(
+                "Warning: Hugging Face token not found in env (HF_TOKEN or HUGGINGFACE_HUB_TOKEN). Skipping upload."
+            )
+        else:
+            try:
+                save_dir = os.path.join("/tmp", f"doclang_model_{os.getpid()}")
+                os.makedirs(save_dir, exist_ok=True)
+                # Save model weights
+                torch.save(
+                    model.state_dict(), os.path.join(save_dir, "pytorch_model.bin")
+                )
+                # Save minimal config
+                import json
+
+                model_cfg = {
+                    "model_shape": {
+                        "layers": config.model_shape.layers,
+                        "d_model": config.model_shape.d_model,
+                        "n_heads": config.model_shape.n_heads,
+                        "d_vocab": config.model_shape.d_vocab,
+                        "ffw_size": config.model_shape.ffw_size,
+                        "d_head": config.model_shape.d_head,
+                    },
+                    "context_length": config.context_length,
+                }
+                with open(os.path.join(save_dir, "config.json"), "w") as f:
+                    json.dump(model_cfg, f)
+                # Create repo if it does not exist and upload
+                create_repo(
+                    hf_model_id, exist_ok=True, token=hf_token, repo_type="model"
+                )
+                upload_folder(repo_id=hf_model_id, folder_path=save_dir, token=hf_token)
+                print(f"Uploaded model to Hugging Face Hub: {hf_model_id}")
+            except Exception as e:
+                print(f"Warning: Failed to upload model to Hugging Face Hub: {e}")
 
     wandb.finish()
 
