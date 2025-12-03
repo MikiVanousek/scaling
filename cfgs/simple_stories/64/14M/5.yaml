@@ -19,7 +19,7 @@ model_shape:
 
 # Training hyperparameters
 batch_size: 128
-seq_len: 64
+context_length: 64
 tokens: 960000000
 
 gradient_accumulation_steps: 1

@@ -63,41 +63,6 @@ def evaluate(
     return mean_loss, (lower, upper)
 
 
-def calculate_flops_per_token(seq_len, d_model, n_heads, layers, d_vocab, ffw_size=4):
-    key_size = d_model // n_heads
-
-    # ---- Embeddings ----
-    embeddings = 2 * seq_len * d_model * d_vocab
-    # ---- Attention ----
-    # Q, K, V projections
-    qkv = 2 * 3 * seq_len * d_model * (key_size * n_heads)
-
-    # Key @ Query logits
-    kq = 2 * seq_len * seq_len * (key_size * n_heads)
-
-    # Softmax
-    softmax = 3 * n_heads * seq_len * seq_len
-
-    # Softmax reductions
-    softmax_red = 2 * seq_len * seq_len * (key_size * n_heads)
-
-    # Final linear
-    final_linear = 2 * seq_len * (key_size * n_heads) * d_model
-
-    attention = qkv + kq + softmax + softmax_red + final_linear
-
-    # ---- Dense block ----
-    dense = 2 * seq_len * (d_model * ffw_size + d_model * ffw_size)
-
-    # ---- Final logits ----
-    logits = 2 * seq_len * d_model * d_vocab
-
-    # ---- Total FLOPs ----
-    total = embeddings + layers * (attention + dense) + logits
-    assert total % seq_len == 0
-    return total // seq_len  # per token
-
-
 def main(config_path: str):
     with open(config_path, "r") as f:
         config_dict = yaml.safe_load(f)
@@ -109,9 +74,10 @@ def main(config_path: str):
 
     config = DoclangConfig(**config_dict)
 
-    flops_per_token = calculate_flops_per_token(
-        config.seq_len, **config.model_shape.__dict__
+    flops_per_token = config.model_shape.calculate_flops_per_token(
+        config.context_length
     )
+
     print(f"FLOPs per token: {flops_per_token}")
 
     # Load training dataset
@@ -121,7 +87,7 @@ def main(config_path: str):
     train_dataset.set_format(type="torch", columns=["input_ids"])  # type: ignore
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)  # type: ignore
     tokens = config.tokens
-    batches = tokens // config.batch_size // config.seq_len
+    batches = tokens // config.batch_size // config.context_length
 
     # Load validation datasets
     val_loaders = {}
@@ -135,7 +101,9 @@ def main(config_path: str):
         )  # type: ignore
         val_loaders[val_dataset_config.name] = val_loader
 
-    model = AlibiTransformer(**config.model_shape.__dict__)  # , seq_len=config.seq_len)
+    model = AlibiTransformer(
+        **config.model_shape.__dict__
+    )  # , context_length=config.context_length)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model_params = model.count_params()
@@ -185,7 +153,7 @@ def main(config_path: str):
         optimizer.zero_grad()
 
         # Log to wandb
-        tokens_seen = (batch_num + 1) * config.batch_size * config.seq_len
+        tokens_seen = (batch_num + 1) * config.batch_size * config.context_length
         compute = tokens_seen * flops_per_token
         wandb.log(
             {
@@ -228,7 +196,7 @@ def main(config_path: str):
         "tokens_seen": tokens_seen,  # pyright: ignore[reportPossiblyUnboundVariable]
         "compute": compute,  # pyright: ignore[reportPossiblyUnboundVariable]
         "params": model.count_params(),
-        "chunk_size": config.seq_len,
+        "chunk_size": config.context_length,
     }
 
     final_val_losses_str = []

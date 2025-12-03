@@ -1,4 +1,5 @@
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -41,6 +42,8 @@ class AlibiMultiheadAttention(nn.Module):
         self,
         d_model: int,
         n_heads: int,
+        d_head: int,
+        ffw_size: int,
         attn_dropout: float = 0.0,
         resid_dropout: float = 0.0,
     ):
@@ -48,7 +51,7 @@ class AlibiMultiheadAttention(nn.Module):
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
         self.d_model = d_model
         self.n_heads = n_heads
-        self.d_head = d_model // n_heads
+        self.d_head = d_head
 
         self.q_proj = nn.Linear(d_model, d_model, bias=True)
         self.k_proj = nn.Linear(d_model, d_model, bias=True)
@@ -63,16 +66,22 @@ class AlibiMultiheadAttention(nn.Module):
         self.register_buffer("alibi_slopes", slopes, persistent=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        bsz, seq_len, _ = x.size()
+        bsz, context_length, _ = x.size()
 
         q = (
-            self.q_proj(x).view(bsz, seq_len, self.n_heads, self.d_head).transpose(1, 2)
+            self.q_proj(x)
+            .view(bsz, context_length, self.n_heads, self.d_head)
+            .transpose(1, 2)
         )  # [b, h, q, d]
         k = (
-            self.k_proj(x).view(bsz, seq_len, self.n_heads, self.d_head).transpose(1, 2)
+            self.k_proj(x)
+            .view(bsz, context_length, self.n_heads, self.d_head)
+            .transpose(1, 2)
         )  # [b, h, k, d]
         v = (
-            self.v_proj(x).view(bsz, seq_len, self.n_heads, self.d_head).transpose(1, 2)
+            self.v_proj(x)
+            .view(bsz, context_length, self.n_heads, self.d_head)
+            .transpose(1, 2)
         )  # [b, h, k, d]
 
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(
@@ -82,8 +91,8 @@ class AlibiMultiheadAttention(nn.Module):
         # ALiBi bias
         alibi = build_alibi_bias(
             self.alibi_slopes.to(device=attn_scores.device, dtype=attn_scores.dtype),
-            q_len=seq_len,
-            k_len=seq_len,
+            q_len=context_length,
+            k_len=context_length,
             device=attn_scores.device,
             dtype=attn_scores.dtype,
         )  # [1, h, q, k]
@@ -91,7 +100,9 @@ class AlibiMultiheadAttention(nn.Module):
 
         # Causal mask (upper triangle masked)
         causal_mask = torch.ones(
-            (seq_len, seq_len), device=attn_scores.device, dtype=torch.bool
+            (context_length, context_length),
+            device=attn_scores.device,
+            dtype=torch.bool,
         ).tril()
         attn_scores = attn_scores.masked_fill(
             ~causal_mask.unsqueeze(0).unsqueeze(0), float("-inf")
@@ -102,14 +113,14 @@ class AlibiMultiheadAttention(nn.Module):
 
         y = torch.matmul(attn_weights, v)  # [b, h, q, d]
         y = (
-            y.transpose(1, 2).contiguous().view(bsz, seq_len, self.d_model)
+            y.transpose(1, 2).contiguous().view(bsz, context_length, self.d_model)
         )  # [b, q, d_model]
         y = self.o_proj(y)
         return self.resid_dropout(y)
 
 
 class MLP(nn.Module):
-    def __init__(self, d_model: int, hidden_mult: int = 4, dropout: float = 0.0):
+    def __init__(self, d_model: int, hidden_mult: int, dropout: float = 0.0):
         super().__init__()
         hidden = d_model * hidden_mult
         self.fc1 = nn.Linear(d_model, hidden)
@@ -128,6 +139,8 @@ class AlibiBlock(nn.Module):
         self,
         d_model: int,
         n_heads: int,
+        d_head: int,
+        ffw_size: int,
         attn_dropout: float = 0.0,
         resid_dropout: float = 0.0,
         mlp_dropout: float = 0.0,
@@ -135,10 +148,15 @@ class AlibiBlock(nn.Module):
         super().__init__()
         self.ln_1 = nn.LayerNorm(d_model)
         self.attn = AlibiMultiheadAttention(
-            d_model, n_heads, attn_dropout=attn_dropout, resid_dropout=resid_dropout
+            d_model,
+            n_heads,
+            d_head,
+            ffw_size,
+            attn_dropout=attn_dropout,
+            resid_dropout=resid_dropout,
         )
         self.ln_2 = nn.LayerNorm(d_model)
-        self.mlp = MLP(d_model, hidden_mult=4, dropout=mlp_dropout)
+        self.mlp = MLP(d_model, hidden_mult=ffw_size, dropout=mlp_dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x + self.attn(self.ln_1(x))
@@ -152,6 +170,8 @@ class AlibiTransformer(nn.Module):
         d_vocab: int,
         d_model: int,
         n_heads: int,
+        d_head: int,
+        ffw_size: int,
         layers: int,
         dropout: float = 0.0,
     ):
@@ -166,6 +186,8 @@ class AlibiTransformer(nn.Module):
                 AlibiBlock(
                     d_model,
                     n_heads,
+                    d_head,
+                    ffw_size,
                     attn_dropout=dropout,
                     resid_dropout=dropout,
                     mlp_dropout=dropout,
