@@ -82,7 +82,7 @@ class DoclangConfig:
     tokens: Optional[int] = None
     target_compute: Optional[int] = None
     eval_interval: int = -1
-    hf_model_id: Optional[str] = None
+    hf_upload_username: Optional[str] = None
 
     def __post_init__(self):
         # Convert train_dataset to DatasetConfig if needed

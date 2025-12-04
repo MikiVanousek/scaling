@@ -255,6 +255,9 @@ def main(config_path: str):
                 with open(os.path.join(save_dir, "config.json"), "w") as f:
                     json.dump(model_cfg, f)
                 # Create repo if it does not exist and upload
+                hf_model_id = (
+                    f"{config.hf_upload_username}/{str(config_path).replace('/', '-')}"
+                )
                 create_repo(
                     hf_model_id, exist_ok=True, token=hf_token, repo_type="model"
                 )
