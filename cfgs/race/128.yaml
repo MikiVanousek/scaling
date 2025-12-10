@@ -16,7 +16,7 @@ model_shape:
   d_vocab: 88
 
 # Training hyperparameters
-batch_size: 64
+batch_size: 256 
 context_length: 128
 tokens: 1920000000
 # 58 594 iters
