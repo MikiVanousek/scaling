@@ -6,3 +6,5 @@ wandb/**
 secret.yaml
 **/__pycache__
 pixi.lock
+
+**.tar.bz2

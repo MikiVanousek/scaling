@@ -26,3 +26,6 @@ wandb = ">=0.21.1,<0.22"
 jax = ">=0.7.2,<0.8"
 notebook = ">=7.5.0,<8"
 seaborn = ">=0.13.2,<0.14"
+
+[pypi-dependencies]
+gutenbergpy = ">=0.3.5, <0.4"
