@@ -47,12 +47,11 @@ runai submit \
   -e WANDB_API_KEY=SECRET:my-secret,wandb_api_key\
   --cpu 1 \
   --cpu-limit 16 \
-  --gpu 1 \
   --run-as-uid 1000 \
   --run-as-gid 11180 \
   --working-dir / \
   --image-pull-policy IfNotPresent \
-  --memory 64G \
+  --memory 128G \
   --tty \
   --stdin \
   --allow-privilege-escalation \
