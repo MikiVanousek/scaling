@@ -25,8 +25,8 @@ print(f"Number of distinct tokens in tokenizer: {tokenizer.vocab_size} ")
 assert tokenizer.vocab_size < 2**16, "Tokenizer vocab size exceeds uint16 capacity."
 
 TARGET_TOKEN_LENGTH = 8192
-# TARGET_ROWS = 1_000_000
-TARGET_ROWS = 1_00
+TARGET_ROWS = 1_000_000
+# TARGET_ROWS = 1_00
 HF_USERNAME = "MikiV"
 
 # Assert HF write token in env or input
@@ -42,7 +42,7 @@ print(f"Final dataset will have approximately {TARGET_ROWS * TARGET_TOKEN_LENGTH
 
 # Suppress tokenization warnings (e.g., token indices sequence length is longer than the specified maximum)
 # We want the true document length, not truncated to 1024
-tokenizer.model_max_length = 1e9 
+tokenizer.model_max_length = 1e9
 
 # 2. Load the dataset in streaming mode
 # "openbmb/Ultra-FineWeb" is massive, so streaming=True prevents downloading TBs of data.
@@ -71,19 +71,19 @@ def batch_processor(batch):
     """
     # Tokenize the whole batch at once with truncation
     tokenized = tokenizer(
-        batch["content"], 
-        truncation=True, 
+        batch["content"],
+        truncation=True,
         max_length=TARGET_TOKEN_LENGTH,
         padding=False  # Do not pad, we just want to check length/truncate
     )
-    
+
     # Filter: Keep only sequences that met the target length.
     # (Since we truncated, valid rows equal TARGET_TOKEN_LENGTH. Short rows are less.)
     packed_input_ids = [
-        ids for ids in tokenized["input_ids"] 
+        ids for ids in tokenized["input_ids"]
         if len(ids) == TARGET_TOKEN_LENGTH
     ]
-    
+
     return {"input_ids": packed_input_ids}
 
 # 2. Apply Mapping (Lazy Evaluation)
@@ -98,7 +98,7 @@ limmited_ds = processed_ds.take(TARGET_ROWS)
 
 # 4. Save/Materialize efficiently
 # Instead of building a list in RAM, we use a generator.
-# This streams data from the map function and writes it directly to 
+# This streams data from the map function and writes it directly to
 # the disk-backed Arrow format, keeping RAM usage low.
 
 def gen():
@@ -110,7 +110,7 @@ def gen():
 features = Features({"input_ids": [Value("int32")]}) # or int64 depending on vocab size
 
 output_ds = Dataset.from_generator(
-    gen, 
+    gen,
     features=features
 )
 
@@ -121,5 +121,3 @@ output_ds = Dataset.from_generator(
 
 output_ds = output_ds.cast_column("input_ids", Sequence(Value("uint16"), length=TARGET_TOKEN_LENGTH))
 output_ds.push_to_hub(OUTPUT_DATASET_NAME, private=False)
-
-
