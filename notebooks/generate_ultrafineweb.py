@@ -15,6 +15,10 @@ import sys
 from huggingface_hub import login, HfApi
 
 
+# Log to wandb
+import wandb
+wandb.init(project="generate_ultrafineweb")
+
 # In[2]:
 
 
