@@ -61,6 +61,52 @@ class ModelShape:
         assert total % context_length == 0
         return total // context_length  # per token
 
+    @property
+    def num_params(self) -> int:
+        """
+        Calculates the approximate number of parameters.
+        Assumptions:
+        1. Includes biases for all Linears and LayerNorms.
+        2. Standard FFW (not SwiGLU).
+        3. Weight tying: Output head shares weights with input embedding.
+        """
+        
+        # 1. Embedding Layer (Input only, assuming output is tied)
+        # Size: [d_vocab, d_model]
+        embedding_params = self.d_vocab * self.d_model
+
+        # 2. Per-Layer Parameters
+        # A. Attention: W_q, W_k, W_v, W_o
+        # Each is d_model x d_model. Plus biases (d_model).
+        # Total: 4 matrices + 4 biases
+        attn_weights = 4 * (self.d_model ** 2)
+        attn_biases = 4 * self.d_model
+        
+        # B. Feed Forward (MLP)
+        # Hidden dimension size
+        d_ff = self.d_model * self.ffw_size
+        
+        # Up Projection: [d_model, d_ff] + Bias [d_ff]
+        # Down Projection: [d_ff, d_model] + Bias [d_model]
+        ffw_weights = 2 * (self.d_model * d_ff)
+        ffw_biases = d_ff + self.d_model
+        
+        # C. Layer Normalization
+        # Usually 2 per layer (pre-attn, pre-ffw). 
+        # Each has Scale (gamma) + Shift (beta) of size d_model.
+        ln_params = 2 * (2 * self.d_model)
+        
+        # Sum of one block
+        block_params = attn_weights + attn_biases + ffw_weights + ffw_biases + ln_params
+
+        unembedding_params = self.d_model * self.d_vocab
+        # 3. Final Layer Norm (Before output)
+        final_ln_params = 2 * self.d_model
+
+
+        # Total
+        return embedding_params + (self.layers * block_params) + unembedding_params + final_ln_params 
+
 
 @dataclass
 class DoclangConfig:
