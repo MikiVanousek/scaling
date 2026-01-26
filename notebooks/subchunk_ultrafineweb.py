@@ -7,6 +7,10 @@ from datasets import load_dataset, Features, Value, Sequence, Dataset
 from huggingface_hub import HfApi
 from tqdm import tqdm
 
+# Log to wandb
+import wandb
+wandb.init(project="subchunk_ultrafineweb")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Create sub-chunked datasets from a larger chunked dataset.")
     
