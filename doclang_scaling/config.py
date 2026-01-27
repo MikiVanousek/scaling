@@ -70,7 +70,7 @@ class ModelShape:
         2. Standard FFW (not SwiGLU).
         3. Weight tying: Output head shares weights with input embedding.
         """
-        
+
         # 1. Embedding Layer (Input only, assuming output is tied)
         # Size: [d_vocab, d_model]
         embedding_params = self.d_vocab * self.d_model
@@ -81,21 +81,21 @@ class ModelShape:
         # Total: 4 matrices + 4 biases
         attn_weights = 4 * (self.d_model ** 2)
         attn_biases = 4 * self.d_model
-        
+
         # B. Feed Forward (MLP)
         # Hidden dimension size
         d_ff = self.d_model * self.ffw_size
-        
+
         # Up Projection: [d_model, d_ff] + Bias [d_ff]
         # Down Projection: [d_ff, d_model] + Bias [d_model]
         ffw_weights = 2 * (self.d_model * d_ff)
         ffw_biases = d_ff + self.d_model
-        
+
         # C. Layer Normalization
-        # Usually 2 per layer (pre-attn, pre-ffw). 
+        # Usually 2 per layer (pre-attn, pre-ffw).
         # Each has Scale (gamma) + Shift (beta) of size d_model.
         ln_params = 2 * (2 * self.d_model)
-        
+
         # Sum of one block
         block_params = attn_weights + attn_biases + ffw_weights + ffw_biases + ln_params
 
@@ -105,7 +105,7 @@ class ModelShape:
 
 
         # Total
-        return embedding_params + (self.layers * block_params) + unembedding_params + final_ln_params 
+        return embedding_params + (self.layers * block_params) + unembedding_params + final_ln_params
 
 
 @dataclass

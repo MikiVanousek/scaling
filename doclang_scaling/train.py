@@ -223,8 +223,7 @@ def main(config_path: str):
     )  # pyright: ignore[reportPossiblyUnboundVariable]
 
     # Optionally upload to Hugging Face Hub
-    hf_model_id = getattr(config, "hf_model_id", None)
-    if hf_model_id:
+    if getattr(config, "hf_upload_username", None):
         hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
         if not hf_token:
             print(
