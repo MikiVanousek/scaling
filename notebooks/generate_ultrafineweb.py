@@ -108,6 +108,61 @@ def maybe_init_wandb(project_name: Optional[str]):
         return None
 
 
+def generate_rows(
+    input_dataset_id: str,
+    input_split: str,
+    target_token_length: int,
+    batch_size: int,
+    start: int,
+    n: int,
+    desc: str,
+):
+    """
+    Top-level generator that streams the dataset, tokenizes, filters to fixed-length examples,
+    skips 'start' rows, and yields exactly 'n' rows.
+    Defined at module scope to avoid pickling closures/non-picklable state.
+    """
+    # Create tokenizer locally to ensure picklability of the generator function
+    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    tokenizer.model_max_length = int(1e9)
+
+    streaming_dataset = load_dataset(
+        input_dataset_id, split=input_split, streaming=True
+    )
+
+    def batch_processor(batch):
+        tokenized = tokenizer(
+            batch["content"],
+            truncation=True,
+            max_length=target_token_length,
+            padding=False,
+        )
+        packed_input_ids = [
+            ids for ids in tokenized["input_ids"] if len(ids) == target_token_length
+        ]
+        return {"input_ids": packed_input_ids}
+
+    processed_ds = streaming_dataset.map(
+        batch_processor,
+        batched=True,
+        batch_size=batch_size,
+        remove_columns=["content", "score", "source"],
+    )
+
+    skipped = 0
+    count = 0
+    with tqdm(total=n, desc=desc, unit="rows") as pbar:
+        for row in processed_ds:
+            if skipped < start:
+                skipped += 1
+                continue
+            yield row
+            count += 1
+            pbar.update(1)
+            if count >= n:
+                break
+
+
 def main():
     args = parse_args()
 
@@ -160,57 +215,35 @@ def main():
         except Exception as e:
             print(f"Hugging Face login failed/skipped: {e}")
 
-    # 2. Load the dataset in streaming mode
-    streaming_dataset = load_dataset(
-        args.input_dataset_id, split=args.input_split, streaming=True
-    )
-
-    # 3. Batch processor: tokenize and keep only sequences that meet the length
-    def batch_processor(batch):
-        """
-        Tokenizes and filters a batch of text at once.
-        """
-        tokenized = tokenizer(
-            batch["content"],
-            truncation=True,
-            max_length=target_token_length,
-            padding=False,
-        )
-
-        packed_input_ids = [
-            ids for ids in tokenized["input_ids"] if len(ids) == target_token_length
-        ]
-        return {"input_ids": packed_input_ids}
-
-    processed_ds = streaming_dataset.map(
-        batch_processor,
-        batched=True,
-        batch_size=args.batch_size,
-        remove_columns=["content", "score", "source"],
-    )
-
-    # Shared iterator over the processed stream to avoid materializing or double iteration
-    processed_iter = iter(processed_ds)
-
-    # Explicit features; start as variable-length list[int32], cast to fixed uint16 later
+    # Build datasets from a top-level generator to avoid pickling closures
     features = Features({"input_ids": [Value("int32")]})
 
-    def gen_n(n: int, desc: str):
-        count = 0
-        with tqdm(total=n, desc=desc, unit="rows") as pbar:
-            for row in processed_iter:
-                yield row
-                count += 1
-                pbar.update(1)
-                if count >= n:
-                    break
-
-    # 4. Materialize train and validation sequentially from the single iterator
-    train_ds = Dataset.from_generator(
-        lambda: gen_n(target_rows, "Writing Train Rows"), features=features
-    )
+    # 4. Materialize validation first (small), then train using an offset
     val_ds = Dataset.from_generator(
-        lambda: gen_n(val_rows, "Writing Validation Rows"), features=features
+        generate_rows,
+        gen_kwargs={
+            "input_dataset_id": args.input_dataset_id,
+            "input_split": args.input_split,
+            "target_token_length": target_token_length,
+            "batch_size": args.batch_size,
+            "start": 0,
+            "n": val_rows,
+            "desc": "Writing Validation Rows",
+        },
+        features=features,
+    )
+    train_ds = Dataset.from_generator(
+        generate_rows,
+        gen_kwargs={
+            "input_dataset_id": args.input_dataset_id,
+            "input_split": args.input_split,
+            "target_token_length": target_token_length,
+            "batch_size": args.batch_size,
+            "start": val_rows,
+            "n": target_rows,
+            "desc": "Writing Train Rows",
+        },
+        features=features,
     )
 
     # 5. Cast column to fixed-length uint16
