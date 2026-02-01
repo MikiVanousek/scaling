@@ -75,6 +75,10 @@ def main(config_path: str):
 
     config = DoclangConfig(**config_dict)
 
+    wandb.init(
+        project=config.wandb_project, entity=config.wandb_entity, name=config_path
+    )
+
     flops_per_token = config.model_shape.calculate_flops_per_token(
         config.context_length
     )
@@ -109,9 +113,6 @@ def main(config_path: str):
     model.to(device)
     model_params = model.count_params()
 
-    wandb.init(
-        project=config.wandb_project, entity=config.wandb_entity, name=config_path
-    )
 
     print(f"Using device: {device}")
     print(f"Model parameters: {model_params / 1e6:.2f}M")
