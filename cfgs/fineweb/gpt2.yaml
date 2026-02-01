@@ -3,15 +3,15 @@ train_dataset:
   split: train
 validation_datasets:
   - name: MikiV/Ultra-FineWeb-chunked-8192
-    split: train
-  - name: MikiV/Ultra-FineWeb-chunked-4x2048
-    split: train
+    split: validation
+  - name: MikiV/Ultra-FineWeb-chunked-16x512
+    split: validation
 
 model_shape:
   layers: 12
   d_model: 768
   n_heads: 12
-  d_vocab: 50_257
+  d_vocab: 50257
 
 # Training hyperparameters
 batch_size: 64
@@ -23,7 +23,7 @@ lr_warmup_steps: 100
 weight_decay: 0.01
 
 eval_interval: -1
-validation_batch_size: 512
+validation_batch_size: 128
 
 # Wandb configuration
 wandb_entity: miki-and-tml
