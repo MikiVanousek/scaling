@@ -14,7 +14,7 @@ model_shape:
   d_vocab: 50257
 
 # Training hyperparameters
-batch_size: 16
+batch_size: 4
 context_length: 8192
 tokens: 52428800
 
